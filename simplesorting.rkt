@@ -24,6 +24,7 @@
      (list-of-numbers? (rest lon))))))
 ; checks
 (check-expect (list-of-numbers? (list)) #t)
+(check-expect (list-of-numbers? '()) #t)
 (check-expect (list-of-numbers? "apple") #f)
 (check-expect (list-of-numbers? UNSORTEDLIST) #t)
 (check-expect (list-of-numbers? (list 1 "p")) #f)
@@ -40,36 +41,65 @@
 
 ; functions
 
-; ListOfNumbers -> ListOfNumbers
-; sort a list of numbers in ascending order
 (define (sort< lon)
+; ListOfNumbers -> ListOfNumbers
+; sort a list of numbers in ascending order using insertion sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
     [(empty? lon) '()]
     [else (insert (first lon) (sort< (rest lon)))]))
 ; checks
 (check-error (sort< "apple") "not a list of numbers")
-(check-expect (sort< (list 1 0)) (list 0 1))
-(check-expect (sort< UNSORTEDLIST) SORTEDLIST)
-(check-expect (sort< (list 0 2 1 2)) (list 0 1 2 2))
+(check-satisfied (sort< (list 1 0)) sorted<?)
+(check-satisfied (sort< UNSORTEDLIST) sorted<?)
+(check-satisfied (sort< (list 0 2 1 2)) sorted<?)
 
 
+(define (sort> lon)
 ; ListOfNumbers -> ListOfNumbers
 ; sort a list of numbers in descending order
-(define (sort> lon)
   (reverse (sort< lon)))
 ; checks
-(check-expect (sort> UNSORTEDLIST) REVSORTEDLIST)
+(check-satisfied (sort> UNSORTEDLIST) sorted>?)
 
-  
+
+(define (insert n lon)
 ; Number ListOfNumbers -> ListOfNumbers
 ; insert a number into a sorted list, preserving the sort order
-(define (insert n lon)
   (cond
     [(empty? lon) (cons n '())]
+    [(not (sorted<? lon)) (error "list is not sorted in ascending order")]
     [(< n (first lon)) (cons n lon)]
     [else (cons (first lon) (insert n (rest lon)))]))
 ; checks
 (check-expect (insert -1 SORTEDLIST) (cons -1 SORTEDLIST))
 (check-expect (insert 10 SORTEDLIST) (list 0 1 2 3 4 5 6 7 8 9 10))
 (check-expect (insert 5 SORTEDLIST) (list 0 1 2 3 4 5 5 6 7 8 9))
+(check-error (insert 5 REVSORTEDLIST) "list is not sorted in ascending order")
+
+
+(define (sorted<? lon)
+; ListOfNumbers -> Boolean
+; determine if a ListOfNumbers is sorted in ascending order
+  (and
+   (list-of-numbers? lon)
+   (or
+    (empty? (rest lon))
+    (and
+     (<= (first lon) (first (rest lon)))
+     (sorted<? (rest lon))))))
+; checks
+(check-expect (sorted<? UNSORTEDLIST) #f)
+(check-expect (sorted<? SORTEDLIST) #t)
+(check-expect (sorted<? REVSORTEDLIST) #f)
+(check-expect (sorted<? (list 1 2 2 3)) #t)
+
+
+(define (sorted>? lon)
+; ListOfNumbers -> Boolean
+; determine if a ListOfNumbers is sorted in descending order
+  (sorted<? (reverse lon)))
+(check-expect (sorted>? UNSORTEDLIST) #f)
+(check-expect (sorted>? SORTEDLIST) #f)
+(check-expect (sorted>? REVSORTEDLIST) #t)
+(check-expect (sorted>? (list 3 2 2 1)) #t)
