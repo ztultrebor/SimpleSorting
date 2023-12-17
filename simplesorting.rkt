@@ -55,7 +55,7 @@
 
 
 ; ListOfNumbers -> ListOfNumbers
-; sort a list of numbers in ascending order
+; sort a list of numbers in descending order
 (define (sort> lon)
   (reverse (sort< lon)))
 ; checks
