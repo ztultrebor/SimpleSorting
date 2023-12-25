@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-beginner-abbr-reader.ss" "lang")((modname simplesorting) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+#reader(lib "htdp-intermediate-reader.ss" "lang")((modname simplesorting) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
 ; constants for testing
 
 (define UNSORTEDLIST (list 6 8 3 0 9 1 4 7 2 5))
@@ -11,83 +11,143 @@
 
 ; data definitions
 
-; A list of numbers is one of
-;    - '()
-;    - (cons Number ListOfNumbers
-(define (list-of-numbers? lon)
-  (and
-   (list? lon)
-   (or
-    (empty? lon)
-    (and
-     (number? (first lon))
-     (list-of-numbers? (rest lon))))))
-; checks
-(check-expect (list-of-numbers? (list)) #t)
-(check-expect (list-of-numbers? '()) #t)
-(check-expect (list-of-numbers? "apple") #f)
-(check-expect (list-of-numbers? UNSORTEDLIST) #t)
-(check-expect (list-of-numbers? (list 1 "p")) #f)
-(check-expect (list-of-numbers? UNSORTEDLIST) #t)
-(check-expect (list-of-numbers? (list 1 UNSORTEDLIST)) #f)
+
+; [ListOf X] is one of
+;     - '()
+;     - (cons X [ListOf X])
+; where X is atomic
 #;
-(define (fn-on-lon lon)
+(define (fn-on-lst lst)
   (cond
-    [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [(empty? lon) ...]
-    [else ... (first lon) ... (fn-on-lon (rest lon))]))
+    [(empty? lst) ...]
+    [else ... (first lst) ... (fn-on-lst (rest lst))]))
           
 
 
-; functions
+; abstract functions
+
+
+(define (abstract-sort lst pred)
+  ; [ListOf X] [X X -> Boolean] -> [ListOf X]
+  (cond
+    [(empty? lst) '()]
+    [else (insert (first lst) (abstract-sort (rest lst) pred) pred)]))
+
+
+(define (insert val lst pred)
+  ; X [ListOf X] [X X -> Boolean] -> [ListOf X]
+  ; an auxiliary function on abstract-sort that
+  ; prevents exponential recursion growth.
+  ; It inserts a value into a sorted list of the
+  ; same type, preserving the sort order
+  (cond
+    [(empty? lst) (cons val '())]
+    [(not (is-sorted-correct? lst pred))
+     (error "list is not sorted appropriately")]
+    [(pred val (first lst)) (cons val lst)]
+    [else (cons (first lst) (insert val (rest lst) pred))]))
+; checks
+(check-expect (insert -1 SORTEDLIST <) (cons -1 SORTEDLIST))
+(check-expect (insert 10 SORTEDLIST <) (list 0 1 2 3 4 5 6 7 8 9 10))
+(check-expect (insert 5 SORTEDLIST <) (list 0 1 2 3 4 5 5 6 7 8 9))
+(check-error (insert 5 REVSORTEDLIST <) "list is not sorted appropriately")
+
+
+(define (list-of-x? lst pred)
+  ; [ListOf X] [X -> Boolean] -> Boolean
+  ; determines if lst is in fact a list of the
+  ; appropriate type as determined by pred
+  (and
+   (list? lst)
+   (or
+    (empty? lst)
+    (and
+     (pred (first lst))
+     (list-of-x? (rest lst) pred)))))
+
+
+(define (is-sorted-correct? lst pred)
+  ; [ListOf X] [X X -> Boolean] -> Boolean
+   (or
+    (empty? (rest lst))
+    (and
+     (or
+      (pred (first lst) (first (rest lst)))
+      (equal? (first lst) (first (rest lst))))
+     (is-sorted-correct? (rest lst) pred))))
+
+
+
+; typed functions
+
 
 (define (sort< lon)
-; ListOfNumbers -> ListOfNumbers
-; sort a list of numbers in ascending order using insertion sort algorithm
+  ; ListOfNumbers -> ListOfNumbers
+  ; sort a list of numbers in ascending order using insertion sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [(empty? lon) '()]
-    [else (insert (first lon) (sort< (rest lon)))]))
+    [else (abstract-sort lon <)]))
 ; checks
-(check-error (sort< "apple") "not a list of numbers")
+;(check-error (sort< "apple") "not a list of numbers")
 (check-satisfied (sort< (list 1 0)) sorted<?)
 (check-satisfied (sort< UNSORTEDLIST) sorted<?)
 (check-satisfied (sort< (list 0 2 1 2)) sorted<?)
 
 
 (define (sort> lon)
-; ListOfNumbers -> ListOfNumbers
-; sort a list of numbers in descending order
-  (reverse (sort< lon)))
+  ; ListOfNumbers -> ListOfNumbers
+  ; sort a list of numbers in descending order using insertion sort algorithm
+  (cond
+    [(not (list-of-numbers? lon)) (error "not a list of numbers")]
+    [else (abstract-sort lon >)]))
 ; checks
 (check-satisfied (sort> UNSORTEDLIST) sorted>?)
 
 
-(define (insert n lon)
-; Number ListOfNumbers -> ListOfNumbers
-; insert a number into a sorted list, preserving the sort order
+(define (sort-string< los)
+  ; [ListOf String] -> [ListOf String]
+  ; sort a list of strings in ascending order using insertion sort algorithm
   (cond
-    [(empty? lon) (cons n '())]
-    [(not (sorted<? lon)) (error "list is not sorted in ascending order")]
-    [(< n (first lon)) (cons n lon)]
-    [else (cons (first lon) (insert n (rest lon)))]))
+    [(not (list-of-string? los)) (error "not a list of strings")]
+    [else (abstract-sort los string<?)]))
 ; checks
-(check-expect (insert -1 SORTEDLIST) (cons -1 SORTEDLIST))
-(check-expect (insert 10 SORTEDLIST) (list 0 1 2 3 4 5 6 7 8 9 10))
-(check-expect (insert 5 SORTEDLIST) (list 0 1 2 3 4 5 5 6 7 8 9))
-(check-error (insert 5 REVSORTEDLIST) "list is not sorted in ascending order")
+(check-satisfied (sort-string< '("donut" "jerry" "apple")) sorted-string<?)
+
+
+(define (sort-string> los)
+  ; [ListOf String] -> [ListOf String]
+  ; sort a list of strings in descending order using insertion sort algorithm
+  (cond
+    [(not (list-of-string? los)) (error "not a list of strings")]
+    [else (abstract-sort los string>?)]))
+; checks
+(check-satisfied (sort-string> '("donut" "jerry" "apple")) sorted-string>?)
+
+
+(define (list-of-numbers? lst)
+  ; [ListOf Any] -> Boolean
+  (list-of-x? lst number?))
+; checks
+(check-expect (list-of-numbers? (list)) #t)
+(check-expect (list-of-numbers? '()) #t)
+(check-expect (list-of-numbers? "apple") #f)
+(check-expect (list-of-numbers? UNSORTEDLIST) #t)
+(check-expect (list-of-numbers? (list 1 "p")) #f)
+(check-expect (list-of-numbers? (list 1 UNSORTEDLIST)) #f)
+
+
+(define (list-of-string? lst)
+  ; [ListOf Any] -> Boolean
+  (list-of-x? lst string?))
+; checks
+(check-expect (list-of-string? "apple") #f)
+(check-expect (list-of-string? '("donut" "jerry")) #t)
 
 
 (define (sorted<? lon)
-; ListOfNumbers -> Boolean
-; determine if a ListOfNumbers is sorted in ascending order
-  (and
-   (list-of-numbers? lon)
-   (or
-    (empty? (rest lon))
-    (and
-     (<= (first lon) (first (rest lon)))
-     (sorted<? (rest lon))))))
+  ; [ListOf Numbers] -> Boolean
+  ; determine if a [ListOf Numbers] is sorted in ascending order
+  (is-sorted-correct? lon <))
 ; checks
 (check-expect (sorted<? UNSORTEDLIST) #f)
 (check-expect (sorted<? SORTEDLIST) #t)
@@ -95,10 +155,24 @@
 (check-expect (sorted<? (list 1 2 2 3)) #t)
 
 
+(define (sorted-string<? lon)
+  ; [ListOf String] -> Boolean
+  ; determine if a [ListOf String] is sorted in ascending order
+  (is-sorted-correct? lon string<?))
+(check-expect (sorted-string<? (sort-string< (list  "2" "1" "2" "3"))) #t)
+
+
+(define (sorted-string>? lon)
+  ; [ListOf String] -> Boolean
+  ; determine if a [ListOf String] is sorted in descending order
+  (is-sorted-correct? lon string>?))
+(check-expect (sorted-string>? (sort-string> (list  "2" "1" "2" "3"))) #t)
+
+
 (define (sorted>? lon)
-; ListOfNumbers -> Boolean
-; determine if a ListOfNumbers is sorted in descending order
-  (sorted<? (reverse lon)))
+  ; [ListOf Numbers] -> Boolean
+  ; determine if a [ListOf Numbers] is sorted in descending order
+  (is-sorted-correct? lon >))
 (check-expect (sorted>? UNSORTEDLIST) #f)
 (check-expect (sorted>? SORTEDLIST) #f)
 (check-expect (sorted>? REVSORTEDLIST) #t)
