@@ -27,30 +27,22 @@
 ; abstract functions
 
 
-(define (abstract-sort lst pred)
-  ; [ListOf X] [X X -> Boolean] -> [ListOf X]
+(define (abstract-sort pred lst)
+  ; [X X -> Boolean] [ListOf X] -> [ListOf X]
   (cond
     [(empty? lst) '()]
-    [else (insert (first lst) (abstract-sort (rest lst) pred) pred)]))
-
-
-(define (insert val lst pred)
-  ; X [ListOf X] [X X -> Boolean] -> [ListOf X]
-  ; an auxiliary function on abstract-sort that
-  ; prevents exponential recursion growth.
-  ; It inserts a value into a sorted list of the
-  ; same type, preserving the sort order
-  (cond
-    [(empty? lst) (cons val '())]
-    [(not (is-sorted-correct? lst pred))
-     (error "list is not sorted appropriately")]
-    [(pred val (first lst)) (cons val lst)]
-    [else (cons (first lst) (insert val (rest lst) pred))]))
-; checks
-(check-expect (insert -1 SORTEDLIST <) (cons -1 SORTEDLIST))
-(check-expect (insert 10 SORTEDLIST <) (list 0 1 2 3 4 5 6 7 8 9 10))
-(check-expect (insert 5 SORTEDLIST <) (list 0 1 2 3 4 5 5 6 7 8 9))
-(check-error (insert 5 REVSORTEDLIST <) "list is not sorted appropriately")
+    [else (local (
+                  (define (insert val lst)
+                    ; X [ListOf X] -> [ListOf X]
+                    ; an helper function on abstract-sort that
+                    ; prevents exponential recursion growth.
+                    ; It inserts a value into a sorted list of the
+                    ; same type, preserving the sort order
+                    (cond
+                      [(empty? lst) (cons val '())]
+                      [(pred val (first lst)) (cons val lst)]
+                      [else (cons (first lst) (insert val (rest lst)))])))
+            (insert (first lst) (abstract-sort pred (rest lst))))]))
 
 
 (define (list-of-x? lst pred)
@@ -68,13 +60,13 @@
 
 (define (is-sorted-correct? lst pred)
   ; [ListOf X] [X X -> Boolean] -> Boolean
-   (or
-    (empty? (rest lst))
-    (and
-     (or
-      (pred (first lst) (first (rest lst)))
-      (equal? (first lst) (first (rest lst))))
-     (is-sorted-correct? (rest lst) pred))))
+  (or
+   (empty? (rest lst))
+   (and
+    (or
+     (pred (first lst) (first (rest lst)))
+     (equal? (first lst) (first (rest lst))))
+    (is-sorted-correct? (rest lst) pred))))
 
 
 
@@ -86,7 +78,7 @@
   ; sort a list of numbers in ascending order using insertion sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [else (abstract-sort lon <)]))
+    [else (abstract-sort < lon)]))
 ; checks
 ;(check-error (sort< "apple") "not a list of numbers")
 (check-satisfied (sort< (list 1 0)) sorted<?)
@@ -99,7 +91,7 @@
   ; sort a list of numbers in descending order using insertion sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [else (abstract-sort lon >)]))
+    [else (abstract-sort > lon)]))
 ; checks
 (check-satisfied (sort> UNSORTEDLIST) sorted>?)
 
@@ -109,9 +101,9 @@
   ; sort a list of strings in ascending order using insertion sort algorithm
   (cond
     [(not (list-of-string? los)) (error "not a list of strings")]
-    [else (abstract-sort los string<?)]))
+    [else (abstract-sort string<? los)]))
 ; checks
-(check-satisfied (sort-string< '("donut" "jerry" "apple")) sorted-string<?)
+(check-satisfied (sort-string< '("donut" "jerry" "apple")) string-sorted<?)
 
 
 (define (sort-string> los)
@@ -119,9 +111,9 @@
   ; sort a list of strings in descending order using insertion sort algorithm
   (cond
     [(not (list-of-string? los)) (error "not a list of strings")]
-    [else (abstract-sort los string>?)]))
+    [else (abstract-sort string>? los)]))
 ; checks
-(check-satisfied (sort-string> '("donut" "jerry" "apple")) sorted-string>?)
+(check-satisfied (sort-string> '("donut" "jerry" "apple")) string-sorted>?)
 
 
 (define (list-of-numbers? lst)
@@ -155,20 +147,6 @@
 (check-expect (sorted<? (list 1 2 2 3)) #t)
 
 
-(define (sorted-string<? lon)
-  ; [ListOf String] -> Boolean
-  ; determine if a [ListOf String] is sorted in ascending order
-  (is-sorted-correct? lon string<?))
-(check-expect (sorted-string<? (sort-string< (list  "2" "1" "2" "3"))) #t)
-
-
-(define (sorted-string>? lon)
-  ; [ListOf String] -> Boolean
-  ; determine if a [ListOf String] is sorted in descending order
-  (is-sorted-correct? lon string>?))
-(check-expect (sorted-string>? (sort-string> (list  "2" "1" "2" "3"))) #t)
-
-
 (define (sorted>? lon)
   ; [ListOf Numbers] -> Boolean
   ; determine if a [ListOf Numbers] is sorted in descending order
@@ -177,3 +155,17 @@
 (check-expect (sorted>? SORTEDLIST) #f)
 (check-expect (sorted>? REVSORTEDLIST) #t)
 (check-expect (sorted>? (list 3 2 2 1)) #t)
+
+
+(define (string-sorted<? lon)
+  ; [ListOf String] -> Boolean
+  ; determine if a [ListOf String] is sorted in ascending order
+  (is-sorted-correct? lon string<?))
+(check-expect (string-sorted<? (sort-string< (list  "2" "1" "2" "3"))) #t)
+
+
+(define (string-sorted>? lon)
+  ; [ListOf String] -> Boolean
+  ; determine if a [ListOf String] is sorted in descending order
+  (is-sorted-correct? lon string>?))
+(check-expect (string-sorted>? (sort-string> (list  "2" "1" "2" "3"))) #t)
