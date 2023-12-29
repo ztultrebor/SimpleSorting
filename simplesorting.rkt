@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-reader.ss" "lang")((modname simplesorting) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname simplesorting) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
 ; constants for testing
 
 (define UNSORTEDLIST (list 6 8 3 0 9 1 4 7 2 5))
@@ -42,6 +42,7 @@
                       [(empty? lst) (cons val '())]
                       [(pred val (first lst)) (cons val lst)]
                       [else (cons (first lst) (insert val (rest lst)))])))
+            ; - IN -
             (insert (first lst) (abstract-sort pred (rest lst))))]))
 
 
@@ -58,16 +59,20 @@
      (list-of-x? (rest lst) pred)))))
 
 
-(define (is-sorted-correct? lst pred)
-  ; [ListOf X] [X X -> Boolean] -> Boolean
-  (or
-   (empty? (rest lst))
-   (and
-    (or
-     (pred (first lst) (first (rest lst)))
-     (equal? (first lst) (first (rest lst))))
-    (is-sorted-correct? (rest lst) pred))))
-
+(define (sorted? pred)
+  ; [X X -> Boolean] -> [[ListOf X] -> Boolean]
+  (lambda (lst)
+    (local (
+            (define (destro? rlst)
+              (or
+               (empty? (rest rlst))
+               (and
+                (or
+                 (pred (first rlst) (first (rest rlst)))
+                 (equal? (first rlst) (first (rest rlst))))
+                (destro? (rest rlst))))))
+      ; - IN -
+      (destro? lst))))
 
 
 ; typed functions
@@ -80,10 +85,10 @@
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
     [else (abstract-sort < lon)]))
 ; checks
-;(check-error (sort< "apple") "not a list of numbers")
-(check-satisfied (sort< (list 1 0)) sorted<?)
-(check-satisfied (sort< UNSORTEDLIST) sorted<?)
-(check-satisfied (sort< (list 0 2 1 2)) sorted<?)
+(check-error (sort< "apple") "not a list of numbers")
+(check-satisfied (sort< (list 1 0)) (sorted? <))
+(check-satisfied (sort< UNSORTEDLIST) (sorted? <))
+(check-satisfied (sort< (list 0 2 1 2)) (sorted? <))
 
 
 (define (sort> lon)
@@ -93,7 +98,7 @@
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
     [else (abstract-sort > lon)]))
 ; checks
-(check-satisfied (sort> UNSORTEDLIST) sorted>?)
+(check-satisfied (sort> UNSORTEDLIST) (sorted? >))
 
 
 (define (sort-string< los)
@@ -103,7 +108,7 @@
     [(not (list-of-string? los)) (error "not a list of strings")]
     [else (abstract-sort string<? los)]))
 ; checks
-(check-satisfied (sort-string< '("donut" "jerry" "apple")) string-sorted<?)
+(check-satisfied (sort-string< '("donut" "jerry" "apple")) (sorted? string<?))
 
 
 (define (sort-string> los)
@@ -113,7 +118,7 @@
     [(not (list-of-string? los)) (error "not a list of strings")]
     [else (abstract-sort string>? los)]))
 ; checks
-(check-satisfied (sort-string> '("donut" "jerry" "apple")) string-sorted>?)
+(check-satisfied (sort-string> '("donut" "jerry" "apple")) (sorted? string>?))
 
 
 (define (list-of-numbers? lst)
@@ -134,38 +139,3 @@
 ; checks
 (check-expect (list-of-string? "apple") #f)
 (check-expect (list-of-string? '("donut" "jerry")) #t)
-
-
-(define (sorted<? lon)
-  ; [ListOf Numbers] -> Boolean
-  ; determine if a [ListOf Numbers] is sorted in ascending order
-  (is-sorted-correct? lon <))
-; checks
-(check-expect (sorted<? UNSORTEDLIST) #f)
-(check-expect (sorted<? SORTEDLIST) #t)
-(check-expect (sorted<? REVSORTEDLIST) #f)
-(check-expect (sorted<? (list 1 2 2 3)) #t)
-
-
-(define (sorted>? lon)
-  ; [ListOf Numbers] -> Boolean
-  ; determine if a [ListOf Numbers] is sorted in descending order
-  (is-sorted-correct? lon >))
-(check-expect (sorted>? UNSORTEDLIST) #f)
-(check-expect (sorted>? SORTEDLIST) #f)
-(check-expect (sorted>? REVSORTEDLIST) #t)
-(check-expect (sorted>? (list 3 2 2 1)) #t)
-
-
-(define (string-sorted<? lon)
-  ; [ListOf String] -> Boolean
-  ; determine if a [ListOf String] is sorted in ascending order
-  (is-sorted-correct? lon string<?))
-(check-expect (string-sorted<? (sort-string< (list  "2" "1" "2" "3"))) #t)
-
-
-(define (string-sorted>? lon)
-  ; [ListOf String] -> Boolean
-  ; determine if a [ListOf String] is sorted in descending order
-  (is-sorted-correct? lon string>?))
-(check-expect (string-sorted>? (sort-string> (list  "2" "1" "2" "3"))) #t)
