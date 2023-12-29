@@ -68,8 +68,8 @@
                (empty? (rest rlst))
                (and
                 (or
-                 (pred (first rlst) (first (rest rlst)))
-                 (equal? (first rlst) (first (rest rlst))))
+                 (pred (first rlst) (second rlst))
+                 (equal? (first rlst) (second rlst)))
                 (destro? (rest rlst))))))
       ; - IN -
       (destro? lst))))
