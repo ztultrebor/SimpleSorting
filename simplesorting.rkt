@@ -7,28 +7,20 @@
 (define SORTEDLIST (list 0 1 2 3 4 5 6 7 8 9))
 (define REVSORTEDLIST (list 9 8 7 6 5 4 3 2 1 0))
 
-
-
-; data definitions
-
-
-; [ListOf X] is one of
-;     - '()
-;     - (cons X [ListOf X])
-; where X is atomic
-#;
-(define (fn-on-lst lst)
-  (cond
-    [(empty? lst) ...]
-    [else ... (first lst) ... (fn-on-lst (rest lst))]))
           
 
-
+; ==================================
 ; abstract functions
 
+(define (abstract-sort pred lst algo)
+  ; [X X -> Boolean] [ListOf X] [[X X -> Boolean] [ListOf X] -> [ListOf X]]
+  ; -> [ListOf X]
+  (algo pred lst))
 
-(define (abstract-sort pred lst)
+
+(define (insertion-sort pred lst)
   ; [X X -> Boolean] [ListOf X] -> [ListOf X]
+  ; slow, O(n^2) insertion sorting
   (cond
     [(empty? lst) '()]
     [else (local (
@@ -43,7 +35,30 @@
                       [(pred val (first lst)) (cons val lst)]
                       [else (cons (first lst) (insert val (rest lst)))])))
             ; - IN -
-            (insert (first lst) (abstract-sort pred (rest lst))))]))
+            (insert (first lst) (insertion-sort pred (rest lst))))]))
+
+
+(define (quick-sort l)
+  ; [ListOf X] -> [ListOf X]
+  ; fast, O(n lg n) merge sorting with pivot
+  ; can't be supplied with a predicate it's current form
+  (cond
+    [(< (length l) 2) l]
+    [else
+     (local (
+             (define pivot (list-ref l (quotient (length l) 2)))
+             (define (divide pred ls)
+               ; [X X -> Boolean] [ListOf X] -> [ListOf X]
+               ; creates a sublist according to pred around the pivot
+               (cond
+                 [(empty? ls) '()]
+                 [(pred (first ls) pivot)
+                  (cons (first ls) (divide pred (rest ls)))]
+                 [else (divide pred (rest ls))])))
+       ; - IN -
+       (append (quick-sort (divide < l))
+               (divide = l)
+               (quick-sort (divide > l))))]))
 
 
 (define (list-of-x? lst pred)
@@ -75,67 +90,89 @@
       (destro? lst))))
 
 
-; typed functions
+; =============================
+; concrete functions
 
 
-(define (sort< lon)
+(define (isort< lon)
   ; ListOfNumbers -> ListOfNumbers
   ; sort a list of numbers in ascending order using insertion sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [else (abstract-sort < lon)]))
-; checks
-(check-error (sort< "apple") "not a list of numbers")
-(check-satisfied (sort< (list 1 0)) (sorted? <))
-(check-satisfied (sort< UNSORTEDLIST) (sorted? <))
-(check-satisfied (sort< (list 0 2 1 2)) (sorted? <))
+    [else (insertion-sort < lon)]))
 
 
-(define (sort> lon)
+(define (qsort< lon)
+  ; ListOfNumbers -> ListOfNumbers
+  ; sort a list of numbers in ascending order using insertion sort algorithm
+  (cond
+    [(not (list-of-numbers? lon)) (error "not a list of numbers")]
+    [else (quick-sort lon)]))
+
+
+(define (isort> lon)
   ; ListOfNumbers -> ListOfNumbers
   ; sort a list of numbers in descending order using insertion sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [else (abstract-sort > lon)]))
-; checks
-(check-satisfied (sort> UNSORTEDLIST) (sorted? >))
+    [else (insertion-sort > lon)]))
 
 
-(define (sort-string< los)
+(define (qsort> lon)
+  ; ListOfNumbers -> ListOfNumbers
+  ; sort a list of numbers in descending order using insertion sort algorithm
+  (cond
+    [(not (list-of-numbers? lon)) (error "not a list of numbers")]
+    [else (reverse (quick-sort lon))]))
+
+
+(define (isort-string< los)
   ; [ListOf String] -> [ListOf String]
   ; sort a list of strings in ascending order using insertion sort algorithm
   (cond
     [(not (list-of-string? los)) (error "not a list of strings")]
-    [else (abstract-sort string<? los)]))
-; checks
-(check-satisfied (sort-string< '("donut" "jerry" "apple")) (sorted? string<?))
+    [else (insertion-sort string<? los)]))
 
 
-(define (sort-string> los)
+(define (isort-string> los)
   ; [ListOf String] -> [ListOf String]
   ; sort a list of strings in descending order using insertion sort algorithm
   (cond
     [(not (list-of-string? los)) (error "not a list of strings")]
-    [else (abstract-sort string>? los)]))
-; checks
-(check-satisfied (sort-string> '("donut" "jerry" "apple")) (sorted? string>?))
+    [else (insertion-sort string>? los)]))
 
 
 (define (list-of-numbers? lst)
   ; [ListOf Any] -> Boolean
   (list-of-x? lst number?))
+
+
+(define (list-of-string? lst)
+  ; [ListOf Any] -> Boolean
+  (list-of-x? lst string?))
+
+
+
+; ==========================
 ; checks
+
+(check-error (isort< "apple") "not a list of numbers")
+(check-satisfied (isort< (list 1 0)) (sorted? <))
+(check-satisfied (isort< UNSORTEDLIST) (sorted? <))
+(check-satisfied (isort< (list 0 2 1 2)) (sorted? <))
+(check-error (qsort< "apple") "not a list of numbers")
+(check-satisfied (qsort< (list 1 0)) (sorted? <))
+(check-satisfied (qsort< UNSORTEDLIST) (sorted? <))
+(check-satisfied (qsort< (list 0 2 1 2)) (sorted? <))
+(check-satisfied (isort> UNSORTEDLIST) (sorted? >))
+(check-satisfied (qsort> UNSORTEDLIST) (sorted? >))
+(check-satisfied (isort-string< '("donut" "jerry" "apple")) (sorted? string<?))
+(check-satisfied (isort-string> '("donut" "jerry" "apple")) (sorted? string>?))
 (check-expect (list-of-numbers? (list)) #t)
 (check-expect (list-of-numbers? '()) #t)
 (check-expect (list-of-numbers? "apple") #f)
 (check-expect (list-of-numbers? UNSORTEDLIST) #t)
 (check-expect (list-of-numbers? (list 1 "p")) #f)
 (check-expect (list-of-numbers? (list 1 UNSORTEDLIST)) #f)
-
-
-(define (list-of-string? lst)
-  ; [ListOf Any] -> Boolean
-  (list-of-x? lst string?))
-; checks
 (check-expect (list-of-string? "apple") #f)
 (check-expect (list-of-string? '("donut" "jerry")) #t)
