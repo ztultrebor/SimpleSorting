@@ -38,16 +38,15 @@
             (insert (first lst) (insertion-sort pred (rest lst))))]))
 
 
-(define (quick-sort lst)
+(define (quick-sort pred lst)
   ; [ListOf X] -> [ListOf X]
   ; fast, O(n lg n) merge sorting with pivot
-  ; can't be supplied with a predicate it's current form
   (cond
     [(< (length lst) 2) lst]
     [else
      (local (
              (define pivot (list-ref lst (quotient (length lst) 2)))
-             (define-struct quickness [lesser equality greater])
+             (define-struct quickness [satisf equality unsatisf])
              (define (divide l q)
                ; [ListOf X] Quickness -> Quickness
                (cond
@@ -55,20 +54,21 @@
                  [else
                   (divide (rest l)
                           (make-quickness    
-                           (if (< (first l) pivot)
-                               (cons (first l) (quickness-lesser q))
-                               (quickness-lesser q))
-                           (if (= (first l) pivot)
+                           (if (pred (first l) pivot)
+                               (cons (first l) (quickness-satisf q))
+                               (quickness-satisf q))
+                           (if (equal? (first l) pivot)
                                (cons (first l) (quickness-equality q))
                                (quickness-equality q))                 
-                           (if (> (first l) pivot)
-                               (cons (first l) (quickness-greater q))
-                               (quickness-greater q))))]))
+                           (if (not (or (pred (first l) pivot)
+                                         (equal? (first l) pivot)))
+                               (cons (first l) (quickness-unsatisf q))
+                               (quickness-unsatisf q))))]))
              (define conquered (divide lst (make-quickness '() '() '()))))
        ; - IN -
-       (append (quick-sort (quickness-lesser conquered))
+       (append (quick-sort pred (quickness-satisf conquered))
                (quickness-equality conquered)
-               (quick-sort (quickness-greater conquered))))]))
+               (quick-sort pred (quickness-unsatisf conquered))))]))
 
 
 (define (list-of-x? lst pred)
@@ -114,10 +114,10 @@
 
 (define (qsort< lon)
   ; ListOfNumbers -> ListOfNumbers
-  ; sort a list of numbers in ascending order using insertion sort algorithm
+  ; sort a list of numbers in ascending order using quick sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [else (quick-sort lon)]))
+    [else (quick-sort < lon)]))
 
 
 (define (isort> lon)
@@ -130,10 +130,10 @@
 
 (define (qsort> lon)
   ; ListOfNumbers -> ListOfNumbers
-  ; sort a list of numbers in descending order using insertion sort algorithm
+  ; sort a list of numbers in descending order using quick sort algorithm
   (cond
     [(not (list-of-numbers? lon)) (error "not a list of numbers")]
-    [else (reverse (quick-sort lon))]))
+    [else (quick-sort > lon)]))
 
 
 (define (isort-string< los)
@@ -144,6 +144,14 @@
     [else (insertion-sort string<? los)]))
 
 
+(define (qsort-string< los)
+  ; [ListOf String] -> [ListOf String]
+  ; sort a list of strings in ascending order using quick sort algorithm
+  (cond
+    [(not (list-of-string? los)) (error "not a list of strings")]
+    [else (quick-sort string<? los)]))
+
+
 (define (isort-string> los)
   ; [ListOf String] -> [ListOf String]
   ; sort a list of strings in descending order using insertion sort algorithm
@@ -151,6 +159,13 @@
     [(not (list-of-string? los)) (error "not a list of strings")]
     [else (insertion-sort string>? los)]))
 
+
+(define (qsort-string> los)
+  ; [ListOf String] -> [ListOf String]
+  ; sort a list of strings in descending order using quick sort algorithm
+  (cond
+    [(not (list-of-string? los)) (error "not a list of strings")]
+    [else (quick-sort string>? los)]))
 
 (define (list-of-numbers? lst)
   ; [ListOf Any] -> Boolean
@@ -177,7 +192,9 @@
 (check-satisfied (isort> UNSORTEDLIST) (sorted? >))
 (check-satisfied (qsort> UNSORTEDLIST) (sorted? >))
 (check-satisfied (isort-string< '("donut" "jerry" "apple")) (sorted? string<?))
+(check-satisfied (qsort-string< '("donut" "jerry" "apple")) (sorted? string<?))
 (check-satisfied (isort-string> '("donut" "jerry" "apple")) (sorted? string>?))
+(check-satisfied (qsort-string> '("donut" "jerry" "apple")) (sorted? string>?))
 (check-expect (list-of-numbers? (list)) #t)
 (check-expect (list-of-numbers? '()) #t)
 (check-expect (list-of-numbers? "apple") #f)
