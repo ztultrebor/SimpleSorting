@@ -38,27 +38,43 @@
             (insert (first lst) (insertion-sort pred (rest lst))))]))
 
 
-(define (quick-sort l)
+(define (quick-sort lst)
   ; [ListOf X] -> [ListOf X]
   ; fast, O(n lg n) merge sorting with pivot
   ; can't be supplied with a predicate it's current form
   (cond
-    [(< (length l) 2) l]
+    [(< (length lst) 2) lst]
     [else
      (local (
-             (define pivot (list-ref l (quotient (length l) 2)))
-             (define (divide pred ls)
-               ; [X X -> Boolean] [ListOf X] -> [ListOf X]
-               ; creates a sublist according to pred around the pivot
+             (define pivot (list-ref lst (quotient (length lst) 2)))
+             (define-struct quickness [lesser equality greater])
+             (define (divide l q)
+               ; [ListOf X] Quickness -> Quickness
                (cond
-                 [(empty? ls) '()]
-                 [(pred (first ls) pivot)
-                  (cons (first ls) (divide pred (rest ls)))]
-                 [else (divide pred (rest ls))])))
+                 [(empty? l) q]
+                 [(< (first l) pivot)
+                  (divide (rest l)
+                          (make-quickness
+                           (cons (first l) (quickness-lesser q))
+                           (quickness-equality q)
+                           (quickness-greater q)))]
+                 [(= (first l) pivot)
+                  (divide (rest l)
+                          (make-quickness
+                           (quickness-lesser q)
+                           (cons (first l) (quickness-equality q))
+                           (quickness-greater q)))]
+                 [(> (first l) pivot)
+                  (divide (rest l)
+                          (make-quickness
+                           (quickness-lesser q)
+                           (quickness-equality q)
+                           (cons (first l) (quickness-greater q))))]))
+             (define conquered (divide lst (make-quickness '() '() '()))))
        ; - IN -
-       (append (quick-sort (divide < l))
-               (divide = l)
-               (quick-sort (divide > l))))]))
+       (append (quick-sort (quickness-lesser conquered))
+               (quickness-equality conquered)
+               (quick-sort (quickness-greater conquered))))]))
 
 
 (define (list-of-x? lst pred)
