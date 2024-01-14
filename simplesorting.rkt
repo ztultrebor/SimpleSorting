@@ -52,24 +52,18 @@
                ; [ListOf X] Quickness -> Quickness
                (cond
                  [(empty? l) q]
-                 [(< (first l) pivot)
+                 [else
                   (divide (rest l)
-                          (make-quickness
-                           (cons (first l) (quickness-lesser q))
-                           (quickness-equality q)
-                           (quickness-greater q)))]
-                 [(= (first l) pivot)
-                  (divide (rest l)
-                          (make-quickness
-                           (quickness-lesser q)
-                           (cons (first l) (quickness-equality q))
-                           (quickness-greater q)))]
-                 [(> (first l) pivot)
-                  (divide (rest l)
-                          (make-quickness
-                           (quickness-lesser q)
-                           (quickness-equality q)
-                           (cons (first l) (quickness-greater q))))]))
+                          (make-quickness    
+                           (if (< (first l) pivot)
+                               (cons (first l) (quickness-lesser q))
+                               (quickness-lesser q))
+                           (if (= (first l) pivot)
+                               (cons (first l) (quickness-equality q))
+                               (quickness-equality q))                 
+                           (if (> (first l) pivot)
+                               (cons (first l) (quickness-greater q))
+                               (quickness-greater q))))]))
              (define conquered (divide lst (make-quickness '() '() '()))))
        ; - IN -
        (append (quick-sort (quickness-lesser conquered))
